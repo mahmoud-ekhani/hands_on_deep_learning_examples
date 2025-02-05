@@ -74,7 +74,11 @@ print(f"Test set size:     {len(test_set)} samples")
 
 def test_set_check(identifier, test_ratio):
     """Return True if the instance should be in the test set based on its identifier hash."""
-    return hash(np.int64(identifier)) & 0xFFFFFFFF <= test_ratio * 0xFFFFFFFF
+    # Convert test_ratio to an integer threshold between 0 and 2^32
+    threshold = int(test_ratio * (2**32))
+    # Get the absolute hash value between 0 and 2^32
+    hash_value = abs(hash(identifier)) % (2**32)
+    return hash_value < threshold
 
 def split_data_with_id_hash(data, id_column, test_ratio):
     """Split the data into train and test sets using a hash of the id column.
@@ -87,8 +91,9 @@ def split_data_with_id_hash(data, id_column, test_ratio):
     ids = data[id_column]
     in_test_set = ids.apply(lambda id_: test_set_check(id_, test_ratio))
     return data.loc[~in_test_set], data.loc[in_test_set]
-# Create a unique identifier by combining longitude and latitude
-housing['id'] = housing['longitude'].astype(str) + '_' + housing['latitude'].astype(str)
+
+# Create a unique numerical identifier by combining longitude and latitude
+housing['id'] = housing['longitude'] * 1000 + housing['latitude']
 train_set, test_set = split_data_with_id_hash(housing, "id", 0.2)
 
 # Save train and test sets to CSV files
