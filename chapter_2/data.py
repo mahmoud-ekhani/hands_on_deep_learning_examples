@@ -3,6 +3,7 @@ import pandas as pd
 import tarfile
 import urllib.request
 import matplotlib.pyplot as plt
+import numpy as np
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -55,3 +56,47 @@ plt.suptitle('Distribution of Housing Features', fontsize=20, y=1.02)
 
 # Save and display the plot
 plt.show()
+
+def shuffle_and_split_data(housing, test_ratio):
+    np.random.seed(42)  # Set random seed for reproducibility
+    shuffled_indices = np.random.permutation(len(housing))
+    test_set_size = int(len(housing) * test_ratio)
+    test_indices = shuffled_indices[:test_set_size]
+    train_indices = shuffled_indices[test_set_size:]
+    return housing.iloc[train_indices], housing.iloc[test_indices]
+
+train_set, test_set = shuffle_and_split_data(housing, 0.2)
+
+print("\nDataset split sizes:")
+print("===================")
+print(f"Training set size: {len(train_set)} samples")
+print(f"Test set size:     {len(test_set)} samples")
+
+def test_set_check(identifier, test_ratio):
+    """Return True if the instance should be in the test set based on its identifier hash."""
+    return hash(np.int64(identifier)) & 0xFFFFFFFF <= test_ratio * 0xFFFFFFFF
+
+def split_data_with_id_hash(data, id_column, test_ratio):
+    """Split the data into train and test sets using a hash of the id column.
+    
+    Args:
+        data: pandas DataFrame containing the dataset
+        id_column: name of the column to use as identifier
+        test_ratio: proportion of data to put in test set (between 0 and 1)
+    """
+    ids = data[id_column]
+    in_test_set = ids.apply(lambda id_: test_set_check(id_, test_ratio))
+    return data.loc[~in_test_set], data.loc[in_test_set]
+# Create a unique identifier by combining longitude and latitude
+housing['id'] = housing['longitude'].astype(str) + '_' + housing['latitude'].astype(str)
+train_set, test_set = split_data_with_id_hash(housing, "id", 0.2)
+
+# Save train and test sets to CSV files
+train_set.to_csv("datasets/housing/housing_train.csv", index=False)
+test_set.to_csv("datasets/housing/housing_test.csv", index=False)
+
+print("\nDataset split sizes using hash:")
+print("==============================")
+print(f"Training set size: {len(train_set)} samples")
+print(f"Test set size:     {len(test_set)} samples")
+print("\nDatasets saved as 'housing_train.csv' and 'housing_test.csv'")
