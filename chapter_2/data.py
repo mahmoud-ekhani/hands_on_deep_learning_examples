@@ -4,7 +4,7 @@ import tarfile
 import urllib.request
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 
 class HousingDataCurator:
     def __init__(self):
@@ -63,6 +63,24 @@ class HousingDataCurator:
         plt.suptitle('Distribution of Housing Features', fontsize=20, y=1.02)
         plt.show()
 
+    def plot_income_categories(self):
+        """Plot income category distribution"""
+        self.housing["income_cat"] = pd.cut(
+            self.housing["median_income"],
+            bins=[0., 1.5, 3.0, 4.5, 6., np.inf],
+            labels=[1, 2, 3, 4, 5]
+        )
+        self.housing["income_cat"].value_counts().sort_index().plot(
+            kind="bar", 
+            figsize=(10, 7), 
+            rot=0, 
+            grid=True
+        )
+        plt.xlabel("Income category")
+        plt.ylabel("Number of districts")
+        plt.title("Income category counts")
+        plt.show()
+
     def split_data_random(self, test_ratio=0.2):
         """Split data using random shuffling"""
         np.random.seed(42)
@@ -96,6 +114,27 @@ class HousingDataCurator:
         )
         self._print_split_sizes("Scikit-learn split")
 
+    def split_data_stratified(self, test_ratio=0.2):
+        """Split data using stratified sampling based on income categories"""
+        if "income_cat" not in self.housing.columns:
+            self.housing["income_cat"] = pd.cut(
+                self.housing["median_income"],
+                bins=[0., 1.5, 3.0, 4.5, 6., np.inf],
+                labels=[1, 2, 3, 4, 5]
+            )
+        
+        splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_ratio, random_state=42)
+        for train_index, test_index in splitter.split(self.housing, self.housing["income_cat"]):
+            self.train_set = self.housing.iloc[train_index]
+            self.test_set = self.housing.iloc[test_index]
+        
+        # Remove income_cat feature after splitting
+        for set_ in (self.train_set, self.test_set):
+            set_.drop("income_cat", axis=1, inplace=True)
+        self.housing.drop("income_cat", axis=1, inplace=True)
+        
+        self._print_split_sizes("Stratified split")
+
     def _print_split_sizes(self, split_method):
         """Helper method to print split sizes"""
         print(f"\nDataset split sizes ({split_method}):")
@@ -113,9 +152,11 @@ class HousingDataCurator:
         self.test_set.to_csv(save_dir / f"{prefix}_test.csv", index=False)
         print(f"\nDatasets saved as '{prefix}_train.csv' and '{prefix}_test.csv'")
 
-# Example usage:
-curator = HousingDataCurator()
-curator.display_dataset_info()
-curator.plot_feature_distributions()
-curator.split_data_by_id()
-curator.save_train_test_sets()
+
+if __name__ == "__main__":
+    curator = HousingDataCurator()
+    curator.display_dataset_info()
+    curator.plot_feature_distributions()
+    curator.plot_income_categories()
+    curator.split_data_stratified()
+    curator.save_train_test_sets()
