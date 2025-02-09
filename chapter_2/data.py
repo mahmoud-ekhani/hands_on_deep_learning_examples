@@ -15,14 +15,14 @@ class HousingDataCurator:
 
     def load_housing_data(self):
         """Load housing data from source or local file"""
-        tarball_path = Path("datasets/housing.tgz")
+        tarball_path = Path("chapter_2/datasets/housing.tgz")
         if not Path.exists(tarball_path):
-            Path.mkdir(Path("datasets"), parents=True, exist_ok=True)
+            Path.mkdir(Path("chapter_2/datasets"), parents=True, exist_ok=True)
             url = "https://github.com/ageron/data/raw/main/housing.tgz"
             urllib.request.urlretrieve(url, tarball_path)
             with tarfile.open(tarball_path) as housing_tarball:
-                housing_tarball.extractall(path="datasets")
-        return pd.read_csv(Path("datasets/housing/housing.csv"))
+                housing_tarball.extractall(path="chapter_2/datasets")
+        return pd.read_csv(Path("chapter_2/datasets/housing/housing.csv"))
 
     def display_dataset_info(self):
         """Display basic information about the dataset"""
@@ -61,7 +61,8 @@ class HousingDataCurator:
         self.housing.hist(bins=50, figsize=(20,15))
         plt.tight_layout(pad=1.5)
         plt.suptitle('Distribution of Housing Features', fontsize=20, y=1.02)
-        plt.show()
+        plt.savefig('chapter_2/datasets/data_visualization/feature_distributions.png')
+        plt.close()
 
     def plot_income_categories(self):
         """Plot income category distribution"""
@@ -79,7 +80,8 @@ class HousingDataCurator:
         plt.xlabel("Income category")
         plt.ylabel("Number of districts")
         plt.title("Income category counts")
-        plt.show()
+        plt.savefig('chapter_2/datasets/data_visualization/income_categories.png')
+        plt.close()
 
     def split_data_random(self, test_ratio=0.2):
         """Split data using random shuffling"""
@@ -147,10 +149,25 @@ class HousingDataCurator:
         if self.train_set is None or self.test_set is None:
             raise ValueError("Must split the data before saving train/test sets")
             
-        save_dir = Path("datasets/housing")
+        save_dir = Path("chapter_2/datasets/housing")
         self.train_set.to_csv(save_dir / f"{prefix}_train.csv", index=False)
         self.test_set.to_csv(save_dir / f"{prefix}_test.csv", index=False)
         print(f"\nDatasets saved as '{prefix}_train.csv' and '{prefix}_test.csv'")
+
+    def plot_location_data(self):
+        """Plot location data visualizations"""
+        # Basic location scatter plot
+        self.housing.plot(kind="scatter", x="longitude", y="latitude",
+                         grid=True, alpha=0.2)
+        plt.savefig('chapter_2/datasets/data_visualization/location_scatter.png')
+        plt.close()
+
+        # Location scatter with population density
+        self.housing.plot(kind="scatter", x="longitude", y="latitude", grid=True,
+                         s=self.housing["population"] / 100, cmap="jet", colorbar=True,
+                         legend=True, sharex=False, figsize=(10, 7))
+        plt.savefig('chapter_2/datasets/data_visualization/location_population_density.png')
+        plt.close()
 
 
 if __name__ == "__main__":
@@ -158,5 +175,6 @@ if __name__ == "__main__":
     curator.display_dataset_info()
     curator.plot_feature_distributions()
     curator.plot_income_categories()
+    curator.plot_location_data()
     curator.split_data_stratified()
     curator.save_train_test_sets()
